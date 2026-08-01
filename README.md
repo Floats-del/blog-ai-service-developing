@@ -20,7 +20,7 @@ This project is my primary backend engineering portfolio project.
 
 Instead of focusing on a basic CRUD application, this backend explores production-oriented architecture while integrating modern AI services.
 
-The goal is to build software the same way production backends are designed—using clean architecture, asynchronous programming, structured logging, centralized exception handling, reusable services, and scalable API design.
+The goal is to build software the same way production backends are designedusing clean architecture, asynchronous programming, structured logging, centralized exception handling, reusable services, and scalable API design.
 
 ---
 
