@@ -7,14 +7,15 @@ from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptT
 from typing import Annotated, Literal
 from langsmith import traceable
 
-from Ai.intent_classifier import IntentUser, get_user_intent
+from Ai.intent_classifier import get_user_intent
 from Ai.raw_and_parsed_clean import extract_parsed_data, extract_raw_data
 from Ai.retry_logic import check_provider_quota
 from core.exceptions import AIServiceException
-from utils.schemas import APIResponse
+from utils.logging.logEvents import ProviderLog, RepairLog, SecurityLog, ServiceLog
+from utils.schemas import APIResponse, LogContext
+from utils.APIResponce_error_code_enum import USER_ERROR_CODES, SYSTEM_ERROR_CODES
 
-import logging
-logger = logging.getLogger(__name__)
+from utils.logging.helper_log import log_state, LogState
 
 
 class SentimentAnalysis(BaseModel):
@@ -59,11 +60,16 @@ class SentimentAnalysis(BaseModel):
 
 @traceable(name="sentiment_analysis_pipeline")
 async def sentiment_analysis_ai(model, text: str) -> APIResponse:
+    log_state(ServiceLog.AI_SERVICE_STARTED, function="sentiment_analysis_ai")
+
     if not text or not text.strip():
+        log_state(SecurityLog.EMPTY_INPUT, function="sentiment_analysis_ai")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
         return APIResponse(
             success=False,
             data=None,
-            error_code="EMPTY_INPUT",
+            error_code=USER_ERROR_CODES.EMPTY_INPUT.value,
             error_message="Input text is empty"
         )
     
@@ -241,20 +247,32 @@ async def sentiment_analysis_ai(model, text: str) -> APIResponse:
     
     
     try:
+        log_state(ProviderLog.AI_PROVIDER_REQUEST, function="sentiment_analysis_ai") #provider cause i call groq's llm 
+        log_state(ProviderLog.AI_PROVIDER_IN_PROCESSING, function="sentiment_analysis_ai")
+
         result = await (prompt | structured_model).ainvoke({"text": text})
     except Exception as e:
         if check_provider_quota(e):
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="sentiment_analysis_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
+
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
         else:
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="sentiment_analysis_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
             raise AIServiceException(
-                error_code="AI_SERVICE_FAILURE",
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
                 message="AI processing failed during initial generation"
             ) from e 
+            
+    log_state(ProviderLog.AI_PROVIDER_SUCCESS, level=LogState.INFO, function="sentiment_analysis_ai")
     
     #parsed:
     parsed = getattr(result, "parsed", None) 
@@ -262,7 +280,7 @@ async def sentiment_analysis_ai(model, text: str) -> APIResponse:
         parsed = result.get("parsed")
     
     if isinstance(parsed, dict):
-        required_keys = {"sentiment", "confidence", "explanation"}
+        required_keys = {"sentiment", "confidence_score", "explanation"}
 
         if not required_keys.issubset(parsed.keys()):
             parsed = None       
@@ -272,12 +290,19 @@ async def sentiment_analysis_ai(model, text: str) -> APIResponse:
         
     extracted_parsed: SentimentAnalysis | None = extract_parsed_data(parsed, SentimentAnalysis)
     if extracted_parsed:
+        log_state(ServiceLog.AI_SERVICE_COMPLETED, function="sentiment_analysis_ai")
+        log_state(ServiceLog.AI_SERVICE_ENDED, function="sentiment_analysis_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
+
         return APIResponse(
             success=True,
             data=extracted_parsed,
             error_code=None,
             error_message=None
         )
+        
+    if extracted_parsed is None:
+        log_state(RepairLog.AI_REPAIR_INITIALIZED, function="sentiment_analysis_ai")
     
     #raw
     raw = getattr(result, "raw", None)
@@ -285,37 +310,62 @@ async def sentiment_analysis_ai(model, text: str) -> APIResponse:
         raw = result.get("raw")
     
     if raw is None:
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai", level=LogState.WARNING)
+        log_state(RepairLog.AI_REPAIR_INITIALIZATION_STOPPED, function="sentiment_analysis_ai", level=LogState.WARNING)
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai", level=LogState.WARNING)
+
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_MISSING",
+            error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
             error_message="Structured output parsing faild and manual parsing come up empty"
         )
     
     
     try:
+        log_state(RepairLog.AI_REPAIR_STARTED, function="sentiment_analysis_ai")  
+        log_state(RepairLog.AI_REPAIR_IN_PROGRESS, function="sentiment_analysis_ai") 
         recovered = await extract_raw_data(raw, parser, model, text, SentimentAnalysis)
+        
     except Exception as e:
         if check_provider_quota(e):
+            log_state(ServiceLog.AI_MY_QUOTA_REACHED, level=LogState.EXCEPTION, function="sentiment_analysis_ai", exc=e)
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, function="sentiment_analysis_ai")    
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")    
+
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
+        else:
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, level=LogState.EXCEPTION, function="sentiment_analysis_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
+            
+            raise AIServiceException( 
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
+                message="AI output recovery process failed"
+                ) from e
         
-        raise AIServiceException( 
-            error_code="AI_REPAIR_FAILURE",
-            message="AI output recovery process failed"
-            ) from e
-    
     if recovered is None:
+        log_state(RepairLog.AI_REPAIR_FAILED, function="sentiment_analysis_ai")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="sentiment_analysis_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
+        
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_REPAIR_FAILED",
+            error_code=SYSTEM_ERROR_CODES.RAW_REPAIR_FAILURE.value,
             error_message="Structured output parsing failed and manual recovery returned no result."
         )
+        
+    log_state(RepairLog.AI_REPAIR_SUCCESS, function="sentiment_analysis_ai")
+    log_state(ServiceLog.AI_SERVICE_COMPLETED, function="sentiment_analysis_ai")
+    log_state(ServiceLog.AI_SERVICE_ENDED, function="sentiment_analysis_ai")
+    log_state(ServiceLog.EXITING_AI_SERVICE, function="sentiment_analysis_ai")
     
     return APIResponse(
         success=True,

@@ -2,21 +2,20 @@
 
 
 
-
+from utils.APIResponce_error_code_enum import USER_ERROR_CODES, SYSTEM_ERROR_CODES
 from typing import Annotated, Any, Literal, Optional
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
 from langsmith import traceable
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 from Ai.retry_logic import check_provider_quota
 from langchain_core.output_parsers import PydanticOutputParser
-import json
 from core.exceptions import AIServiceException
+from utils.logging.logEvents import ProviderLog, RepairLog, SecurityLog, ServiceLog
 from utils.schemas import APIResponse
 from Ai.intent_classifier import  get_user_intent
 from pydantic import ValidationError
 from Ai.raw_and_parsed_clean import extract_raw_data, extract_parsed_data
-import logging
-logger = logging.getLogger(__name__)
+from utils.logging.helper_log import log_state, LogState #log_state is functtion which logs, and LogState is an enum class which tells the function to call what log
 
 
 
@@ -105,17 +104,22 @@ async def call_llm(chain, text, tone):
 
 
 
-
+#this file is fixed do to sentiemnet analysis what u did here! (u might wanna change APIResponce's error code to enum.value too asside form logs)
 @traceable(
     name="rephrase_pipeline",
     metadata={"route": "/rephrase"}
 )
 async def rephraser(llm, text: str, tone: str) -> APIResponse:
+    log_state(ServiceLog.AI_SERVICE_STARTED, function="rephraser")
+    
     if not text or not text.strip():
+        log_state(SecurityLog.EMPTY_INPUT, function="rephraser")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
         return APIResponse(
             success=False,
             data=None,
-            error_code="EMPTY_INPUT",
+            error_code=USER_ERROR_CODES.EMPTY_INPUT.value,
             error_message="Input text is empty"
         )
     
@@ -131,10 +135,14 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
         tone = validated_input.tone
 
     except ValidationError as e:
+            #why not log excepion? well coz we know why this error! that excption log is for truly random exceptions
+        log_state(SecurityLog.UNSUPPORTED_INPUT, function="rephraser", exc=e)
+        log_state(ServiceLog.AI_SERVICE_FAILED, level=LogState.WARNING, function="rephraser", exc=e)
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
         return APIResponse(
             success=False,
             data=None,
-            error_code="UNSUPPORTED_INPUT",
+            error_code=USER_ERROR_CODES.UNSUPPORTED_INPUT.value,
             error_message=str(e)
         )
     
@@ -143,6 +151,8 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
     #If ur here form another service read friom be to bellow!
     intent_package: APIResponse = await get_user_intent(model=llm, text=text)
     if not intent_package.success:
+        log_state(ServiceLog.AI_SERVICE_COMPLETED, function="rephraser")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
         return intent_package #why not return ApiResponce? well get_user_intent gives us api responce so intent_package is the apiresponce!
     #also in get_user_intent, unknown, malicious_injection, is_appropriate(False) result in success=False 
     #so we only continue if we succedded, else APIResponce with what error is given to route!
@@ -376,32 +386,42 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
     chain = prompt | structured_model
     
     try:
+        log_state(ProviderLog.AI_PROVIDER_REQUEST, function="rephraser") #provider cause i call groq's llm 
+        log_state(ProviderLog.AI_PROVIDER_IN_PROCESSING, function="rephraser")
+        
         result = await call_llm(chain, text, tone)
-
     except Exception as e:
         if check_provider_quota(e):
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="rephraser", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
         else:
-            #new: (but why we raise is same!)
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="rephraser", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
+            
+            #new: (but why we raise is same!) [if the error is not quota realted  then it is system error]
             raise AIServiceException(
-                error_code="AI_SERVICE_FAILURE",
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
                 message="AI processing failed during initial generation"
             ) from e #from e carries what origanlly be the exeption type
-            
-        #old:
-        r"""
-        #why we raise:
-        raise  #why not APIRespocnce? well coz current exception only is used to check for check_provider_quota!
-                #when if happens we pass to APIResponse but look in try we have call_llm! which can result in many issues
-                    #like AttributeError, ConnectionError etc -> we need these for debugging!
-                        #thats why it is imp! but they can halt the system so look new method and go in core folder read why new works!
-                            #but trandeoffs of the Api responce contract! --eq(z)
-        """
+        
+    log_state(ProviderLog.AI_PROVIDER_SUCCESS, level=LogState.INFO, function="rephraser")
+    #old:
+    r"""
+    #why we raise:
+    raise  #why not APIRespocnce? well coz current exception only is used to check for check_provider_quota!
+            #when if happens we pass to APIResponse but look in try we have call_llm! which can result in many issues
+                #like AttributeError, ConnectionError etc -> we need these for debugging!
+                    #thats why it is imp! but they can halt the system so look new method and go in core folder read why new works!
+                        #but trandeoffs of the Api responce contract! --eq(z)
+"""
 
     #parsed: (read in intent_classifer wht i pulled u out)
     parsed = getattr(result, "parsed", None) #the with_structured_output's output
@@ -435,6 +455,9 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
         #NO NEED FOR THIS CHECK COZ WE NOW USE INTENT CLASSIFER TO FILTER INAPPROIATE SUFF OUT AHEAD OF TIME
 
         #either i get validated obj, or None, if None i send it to raw!
+        log_state(ServiceLog.AI_SERVICE_COMPLETED, function="rephraser")
+        log_state(ServiceLog.AI_SERVICE_ENDED, function="rephraser")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
         return APIResponse(
             success=True,
             data=extracted_parsed,
@@ -442,6 +465,8 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
             error_message=None
         )
     #parsed dont get a raise we allow it to fail so it can go into manaual
+    if extracted_parsed is None:
+        log_state(RepairLog.AI_REPAIR_INITIALIZED, function="rephraser")
 
 
 
@@ -451,41 +476,61 @@ async def rephraser(llm, text: str, tone: str) -> APIResponse:
         raw = result.get("raw")
 
     if raw is None:
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser", level=LogState.WARNING)
+        log_state(RepairLog.AI_REPAIR_INITIALIZATION_STOPPED, function="rephraser", level=LogState.WARNING)
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser", level=LogState.WARNING)
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_MISSING",
+            error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
             error_message="Structured output parsing faild and manual parsing come up empty"
         )
     try:
+        log_state(RepairLog.AI_REPAIR_STARTED, function="rephraser")  
+        log_state(RepairLog.AI_REPAIR_IN_PROGRESS, function="rephraser") 
         extracted_raw_and_fixed: RephraseOutput | None = await extract_raw_data(raw,parser,llm,text,RephraseOutput) #--eq(x) is loaded here and it is in ApiResponce bellow
 
     except Exception as e: #see  the reason exception is here is coz extract_raw_data calls safe_parse and that calls llm so chace of some other exception is high
         if check_provider_quota(e):
+            log_state(ServiceLog.AI_MY_QUOTA_REACHED, level=LogState.EXCEPTION, function="rephraser", exc=e)
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, function="rephraser")    
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")    
+            
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
-        
-        #if extract_raw_data() throws issue we have this unexpected issue handeler
-        raise AIServiceException( #--eq(z) same reason
-            error_code="AI_REPAIR_FAILURE",
-            message="AI output recovery process failed"
-            ) from e
+        else:
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, level=LogState.EXCEPTION, function="rephraser", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
+            #if extract_raw_data() throws issue we have this unexpected issue handeler
+            raise AIServiceException( #--eq(z) same reason
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
+                message="AI output recovery process failed"
+                ) from e
 
 
 
     #if no issues then we move, no issue doesnt mean not None! we gotta check that too
     if extracted_raw_and_fixed is None:
+        log_state(RepairLog.AI_REPAIR_FAILED, function="rephraser")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="rephraser")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_REPAIR_FAILED",
+            error_code=SYSTEM_ERROR_CODES.RAW_REPAIR_FAILURE.value, #.value is only enum class thing! noramlly class_name.member_var is enough 
             error_message="Structured output parsing failed and manual recovery returned no result."
         )
-    
+        
+    log_state(RepairLog.AI_REPAIR_SUCCESS, function="rephraser")
+    log_state(ServiceLog.AI_SERVICE_COMPLETED, function="rephraser")
+    log_state(ServiceLog.AI_SERVICE_ENDED, function="rephraser")
+    log_state(ServiceLog.EXITING_AI_SERVICE, function="rephraser")
     return APIResponse(
         success=True,
         data=extracted_raw_and_fixed,

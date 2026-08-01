@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-
+from utils.schemas import AIRequestState
 from db import Base
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Boolean, func, Enum 
 from sqlalchemy.sql.sqltypes import TIMESTAMP
 from sqlalchemy.sql.expression import text
 from sqlalchemy.orm import relationship
@@ -16,7 +16,13 @@ class PostTable(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")) 
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE", onupdate="SET DEFAULT"), nullable=False)
     
-    owner = relationship("UserTable", back_populates="posts")
+    owner = relationship("UserTable", back_populates="posts") #by defualt this is lazy loaded but since Post.owner goes in UserTable leaving scope, to fetch the needed recourse
+                                                                #we see an error, so we will egaer load it, so owner already exists!
+                                                                # REMEMBER IN TABLE STUFF ARE NOT RELATIONS! lazy and eager issue happens when outa table stuff is needed
+                                                                
+                                                                #lesson here is that Relation != foregin key! relation is: s a Python object reference managed by SQLAlchemy.
+                                                                    #and foreigen key is an integer val 
+                                                                
     likers = relationship("UserTable", secondary="likes", back_populates="liked_posts")
     comments = relationship("CommentTable", back_populates="post", cascade="all, delete-orphan")
 
@@ -72,20 +78,19 @@ class CommentTable(Base):
 
 
 
+#AIRequestState is just some consts to fill db value for how the task is going
 class AIUsageTrackerTable(Base):
     __tablename__ = "ai_usage_tracker"
-
+    
     id = Column(Integer, primary_key=True, index=True)
-
-    user_id = Column(
-        Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True
-    )
-
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), unique=True, nullable=False)
+    
     last_used = Column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now()
     )
+    
+    # NEW FIELDS FOR STEP 0
+    state = Column(Enum(AIRequestState), default=AIRequestState.COMPLETED, nullable=False)
+    current_request_id = Column(String, nullable=True) # Tracks the active flight ID

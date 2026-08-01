@@ -1,3 +1,5 @@
+import enum
+
 from pydantic import BaseModel, Field, EmailStr, StringConstraints
 from datetime import datetime
 from typing import Annotated, Any, Optional, Literal, List, Union
@@ -19,11 +21,11 @@ class LikeSchema(BaseModel):
     post_id: int
     dir: Literal[0, 1]  
 
-# --- New Comment Payloads ---
+
 class CommentCreateSchema(BaseModel):
     text: str = Field(..., max_length=1000, description="The message content of the comment")
 
-# --- Outgoing Response Layouts ---
+
 class UserResponseSchema(BaseModel):
     email: EmailStr
     user_id: int 
@@ -56,15 +58,15 @@ class PostLikesOutSchema(BaseModel):
     post: PostResponseSchema 
     likes: int 
     model_config = {"from_attributes": True}
-"""
-from_attributes=True (which was called orm_mode=True in Pydantic v1) allows Pydantic to read ORM models or arbitrary objects (like SQLAlchemy model instances) and turn them into a Pydantic object.
-It lets Pydantic extract data from object attributes (using dot notation like user.text) instead of just looking for dictionary keys (like user["text"]).
-"""
 
 
 
 
-
+#used in ai_route
+class QuotaStatus(enum.Enum):
+    ALLOWED = "ALLOWED" 
+    EXHAUSTED = "EXHAUSTED" 
+    COLLISION = "COLLISION" 
 
 #AI
 #Rephrase-route
@@ -130,8 +132,57 @@ class Title_genOut_Route(BaseModel):
 
 
 #API
+#overall server responce
 class APIResponse(BaseModel):
     success: bool
     data: Any | None = None #basically the pydentic will be inside it!
     error_code: str | None = None
     error_message: str | None = None
+
+
+
+
+#gateways:
+#ai gatways:
+class AIGatewayContext(BaseModel):
+    user_id: int
+    request_id: str
+
+
+
+
+#logging:
+#logging schema
+from utils.logging.logEvents import BaseLogEvent
+class LogContext(BaseModel):
+    event: BaseLogEvent 
+    
+    # Correlation
+    request_id: str | None = None
+    user_id: int | None = None
+
+    # Location
+    route: str | None = None
+    function: str | None = None
+
+    # AI
+    provider: str = Field(default="groq")
+    model: str = Field(
+        default="Llama-3.3-70B-Versatile"
+    )
+
+    # Performance
+    latency_ms: int | None = None
+
+    # Recovery
+    repair_used: bool | None = Field(default=False)
+
+    # Errors
+    exception: str | None = None
+    exception_type: str | None = None 
+
+#helper classes:
+class AIRequestState(str, enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"

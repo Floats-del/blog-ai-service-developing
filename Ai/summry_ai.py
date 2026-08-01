@@ -2,17 +2,20 @@
 
 
 from langsmith import traceable
-from pydantic import BaseModel, Field, StringConstraints, constr
+from pydantic import BaseModel, Field, StringConstraints
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate, FewShotChatMessagePromptTemplate
-from typing import Annotated, List
-from Ai.intent_classifier import IntentUser, get_user_intent
+from typing import Annotated
+from Ai.intent_classifier import  get_user_intent
 from Ai.raw_and_parsed_clean import extract_parsed_data, extract_raw_data
-from Ai.retry_logic import check_provider_quota, safe_parse, safe_text_generation
+from Ai.retry_logic import check_provider_quota
 from core.exceptions import AIServiceException
-from utils.schemas import APIResponse
-import logging
-logger = logging.getLogger(__name__)
+from utils.logging.logEvents import ProviderLog, RepairLog, SecurityLog, ServiceLog
+from utils.schemas import APIResponse, LogContext
+from utils.APIResponce_error_code_enum import USER_ERROR_CODES, SYSTEM_ERROR_CODES
+
+from utils.logging.helper_log import log_state, LogState
+
 
 
 class SummaryModel(BaseModel):
@@ -45,6 +48,27 @@ class SummaryModel(BaseModel):
         ge=0.0,  # Greater than or equal to 0.0
         le=1.0   # Less than or equal to 1.0
     )
+    
+    stylistic_explanation: Annotated[
+        str,
+        StringConstraints(max_length=300, strip_whitespace=True)
+    ] = Field(
+        ...,
+        description=(
+            "Briefly explain how the summary was written "
+            "(e.g. condensed repetitive details, preserved key ideas, "
+            "removed filler, simplified wording)."
+        )
+    )
+    
+    is_meaning_preserved: bool = Field(
+    ...,
+    description=(
+        "True if the summary preserves the original meaning "
+        "without changing facts or intent."
+        )
+    )
+
 
 
 
@@ -52,11 +76,17 @@ class SummaryModel(BaseModel):
 
 @traceable(name="blog_summarization_pipeline")
 async def summry_ai(model, text: str) -> APIResponse:
+    log_state(ServiceLog.AI_SERVICE_STARTED, function="summry_ai")
+    
     if not text or not text.strip():
+        log_state(SecurityLog.EMPTY_INPUT, function="summry_ai")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")
+        
         return APIResponse(
             success=False,
             data=None,
-            error_code="EMPTY_INPUT",
+            error_code=USER_ERROR_CODES.EMPTY_INPUT.value,
             error_message="Input text is empty"
         )
 
@@ -224,20 +254,34 @@ async def summry_ai(model, text: str) -> APIResponse:
         ]
     )
     try:
+        log_state(ProviderLog.AI_PROVIDER_REQUEST, function="summry_ai") #provider cause i call groq's llm 
+        log_state(ProviderLog.AI_PROVIDER_IN_PROCESSING, function="summry_ai")
+        
         result = await (prompt | structured_model).ainvoke({"text": text})
     except Exception as e:
         if check_provider_quota(e):
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="summry_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")          
+            
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
         else:
+            log_state(ProviderLog.AI_PROVIDER_FAILURE, level=LogState.EXCEPTION, function="summry_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")   
+            
             raise AIServiceException(
-                error_code="AI_SERVICE_FAILURE",
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
                 message="AI processing failed during initial generation"
             ) from e 
+            
+    log_state(ProviderLog.AI_PROVIDER_SUCCESS, level=LogState.INFO, function="summry_ai")
+    
     
     #parsed:
     parsed = getattr(result, "parsed", None) 
@@ -245,7 +289,7 @@ async def summry_ai(model, text: str) -> APIResponse:
         parsed = result.get("parsed")
     
     if isinstance(parsed, dict):
-        required_keys = {"text", "topic", "confidence_score"}
+        required_keys = {"text", "topic", "confidence_score", "is_meaning_preserved", "stylistic_explanation"}
 
         if not required_keys.issubset(parsed.keys()):
             parsed = None       
@@ -255,6 +299,10 @@ async def summry_ai(model, text: str) -> APIResponse:
         
     extracted_parsed: SummaryModel | None = extract_parsed_data(parsed, SummaryModel)
     if extracted_parsed:
+        log_state(ServiceLog.AI_SERVICE_COMPLETED, function="summry_ai")
+        log_state(ServiceLog.AI_SERVICE_ENDED, function="summry_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")
+        
         return APIResponse(
             success=True,
             data=extracted_parsed,
@@ -262,42 +310,70 @@ async def summry_ai(model, text: str) -> APIResponse:
             error_message=None
         )
     
+    if extracted_parsed is None:
+        log_state(RepairLog.AI_REPAIR_INITIALIZED, function="summry_ai")
+    
     #raw
     raw = getattr(result, "raw", None)
     if raw is None and isinstance(result, dict):
         raw = result.get("raw")
     
     if raw is None:
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai", level=LogState.WARNING)
+        log_state(RepairLog.AI_REPAIR_INITIALIZATION_STOPPED, function="summry_ai", level=LogState.WARNING)
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai", level=LogState.WARNING)
+
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_MISSING",
+            error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
             error_message="Structured output parsing faild and manual parsing come up empty"
         )
     
     try:
+        log_state(RepairLog.AI_REPAIR_STARTED, function="summry_ai")  
+        log_state(RepairLog.AI_REPAIR_IN_PROGRESS, function="summry_ai") 
         recovered = await extract_raw_data(raw, parser, model, text, SummaryModel)
+        
     except Exception as e:
         if check_provider_quota(e):
+            log_state(ServiceLog.AI_MY_QUOTA_REACHED, level=LogState.EXCEPTION, function="summry_ai", exc=e)
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, function="summry_ai")    
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")    
+            
             return APIResponse(
                 success=False,
                 data=None,
-                error_code="QUOTA_REACHED",
+                error_code=SYSTEM_ERROR_CODES.MY_QUOTA_REACHED.value,
                 error_message="No more tokens left to process this request"
             )
+        else:
+            log_state(RepairLog.AI_REPAIR_PREMATURELY_ENDED, level=LogState.EXCEPTION, function="summry_ai", exc=e)
+            log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+            log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")          
+            
+            raise AIServiceException( 
+                error_code=SYSTEM_ERROR_CODES.AI_SERVICE_FAILURE.value,
+                message="AI output recovery process failed"
+                ) from e
         
-        raise AIServiceException( 
-            error_code="AI_REPAIR_FAILURE",
-            message="AI output recovery process failed"
-            ) from e
-    
     if recovered is None:
+        log_state(RepairLog.AI_REPAIR_FAILED, function="summry_ai")
+        log_state(ServiceLog.AI_SERVICE_FAILED, function="summry_ai")
+        log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")  
+        
         return APIResponse(
             success=False,
             data=None,
-            error_code="RAW_REPAIR_FAILED",
+            error_code=SYSTEM_ERROR_CODES.RAW_REPAIR_FAILURE.value,
             error_message="Structured output parsing failed and manual recovery returned no result."
         )
+        
+    log_state(RepairLog.AI_REPAIR_SUCCESS, function="summry_ai")
+    log_state(ServiceLog.AI_SERVICE_COMPLETED, function="summry_ai")
+    log_state(ServiceLog.AI_SERVICE_ENDED, function="summry_ai")
+    log_state(ServiceLog.EXITING_AI_SERVICE, function="summry_ai")
     
     return APIResponse(
         success=True,
