@@ -1,0 +1,207 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+# FastAPI AI Backend Platform
+
+A production-focused AI backend built with **FastAPI**, emphasizing clean architecture, separation of concerns, asynchronous programming, structured logging, robust error handling, and scalable AI service integration.
+
+Rather than being a simple CRUD application, this project is designed to explore real-world backend engineering practices while integrating modern AI capabilities.
+
+---
+
+# Features
+
+- AI-powered text processing services
+- JWT Authentication
+- OAuth2 Bearer Token authentication
+- Async FastAPI architecture
+- PostgreSQL database
+- SQLAlchemy ORM (Async)
+- Alembic migrations
+- Pydantic request/response validation
+- Global exception handling
+- Structured API responses
+- Centralized logging system
+- Separation of concerns (Router → Service → AI Layer → Utilities)
+- Production-style project structure
+
+---
+
+# AI Services
+
+Currently implemented AI endpoints include:
+
+- Content Rephrasing
+- Title Generation
+- Text Summarization
+- Sentiment Analysis
+- Intent Classification
+
+Each service follows a consistent architecture with validation, logging, retry logic, structured responses, and centralized exception handling.
+
+---
+
+# Project Structure
+
+```text
+app/
+│
+├── routers/
+│   ├── auth/
+│   ├── users/
+│   ├── posts/
+│   └── ai/
+│
+├── db_tables/
+│
+├── utils/
+│   ├── logging/
+│   ├── schemas.py
+│   ├── response handlers
+│   └── helper utilities
+│
+├── Ai/
+│
+├── core/
+│
+├── migrations/
+│
+└── main.py
+```
+
+---
+
+# Tech Stack
+
+- FastAPI
+- Python
+- PostgreSQL
+- SQLAlchemy (Async ORM)
+- Alembic
+- Pydantic
+- OAuth2 + JWT
+- LangChain
+- Groq LLM
+- AsyncIO
+- HTTPX
+
+---
+
+# Architecture
+
+The project follows a layered architecture:
+
+```text
+Client
+    │
+    ▼
+FastAPI Routes
+    │
+    ▼
+Business Services
+    │
+    ▼
+AI Layer
+    │
+    ▼
+LLM
+```
+
+Supporting components include:
+
+- Authentication Layer
+- Global Exception Handler
+- Structured Logging
+- Validation Layer
+- Database Layer
+
+This separation keeps business logic independent from routing while making the codebase easier to extend and maintain.
+
+---
+
+# Design Principles
+
+- Separation of Concerns
+- Async-first architecture
+- Production-oriented code organization
+- Strong typing with Pydantic
+- Centralized error handling
+- Consistent API responses
+- Structured logging
+- Dependency Injection
+- Reusable AI services
+
+---
+
+# Running the Project
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Floats-del/blog-ai-service-developing.git
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it:
+
+Windows
+
+```bash
+.venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Configure your environment variables:
+
+```env
+DATABASE_URL=
+SECRET_KEY=
+ALGORITHM=
+ACCESS_TOKEN_EXPIRE_MINUTES=
+GROQ_API_KEY=
+LANGSMITH_API_KEY=
+```
+
+Run migrations:
+
+```bash
+alembic upgrade head
+```
+
+Start the server:
+
+```bash
+uvicorn main:app --reload
+```
+
+---
+
+# Future Improvements
+
+- Redis caching
+- JWT session revocation
+- Rate limiting
+- Background task queue
+- Docker support
+- CI/CD pipeline
+- Unit & integration testing improvements
+- AI Gateway
+- API Gateway / BFF
+- Request tracing & observability
+
+---
+
+# License
+
+This project is licensed under the **MIT License**.
+
+See the [LICENSE](LICENSE) file for details.
