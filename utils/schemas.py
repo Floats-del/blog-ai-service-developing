@@ -186,3 +186,10 @@ class AIRequestState(str, enum.Enum):
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
+    
+
+
+#After celery:
+class TaskResponse(BaseModel):
+    task_id: str
+    status: str = "queued"

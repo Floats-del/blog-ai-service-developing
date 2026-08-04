@@ -16,12 +16,7 @@ class PostTable(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")) 
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE", onupdate="SET DEFAULT"), nullable=False)
     
-    owner = relationship("UserTable", back_populates="posts") #by defualt this is lazy loaded but since Post.owner goes in UserTable leaving scope, to fetch the needed recourse
-                                                                #we see an error, so we will egaer load it, so owner already exists!
-                                                                # REMEMBER IN TABLE STUFF ARE NOT RELATIONS! lazy and eager issue happens when outa table stuff is needed
-                                                                
-                                                                #lesson here is that Relation != foregin key! relation is: s a Python object reference managed by SQLAlchemy.
-                                                                    #and foreigen key is an integer val 
+    owner = relationship("UserTable", back_populates="posts")
                                                                 
     likers = relationship("UserTable", secondary="likes", back_populates="liked_posts")
     comments = relationship("CommentTable", back_populates="post", cascade="all, delete-orphan")
@@ -34,6 +29,8 @@ class UserTable(Base):
     email = Column(String, nullable=False, unique=True)
     password = Column(String, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")) 
+    
+    is_banned = Column(Boolean, nullable=False, server_default=text("false"))
     
     posts = relationship("PostTable", back_populates="owner")
     liked_posts = relationship("PostTable", secondary="likes", back_populates="likers")
@@ -53,7 +50,6 @@ class CommentTable(Base):
     comment_id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)
     text = Column(String, nullable=False)
     
-    # FIX: Changed from text("now()") to func.now() to prevent variable name collision
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     
     user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
@@ -61,20 +57,7 @@ class CommentTable(Base):
 
     post = relationship("PostTable", back_populates="comments")
     commenter = relationship("UserTable", back_populates="comments")
-    """
-    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE", onupdate="SET_DEFAULT"), nullable=False)
-    #the dtype should match the dtype of foregin key, the ForeigenKey's 1st arg is related table's name .id which is what we 
-        #wanted realtion on!
-    
-    # 2. SQLAlchemy relationship: Links this post to its owner object
-    owner = relationship(
-        "user_table", #class name 
-        back_populates="posts" #link with posts var in above class name
-        
-    ) #Column(Integer, ForeignKey ... is not enough! coz this talks to the db and relationship() tells this to python!
-        #coz in ForeignKey ORM only sees an integer... not much value so we need relationships to tell orm the realtion
-            #vr trying to make via foreginkey
-    """
+ 
 
 
 
@@ -91,6 +74,5 @@ class AIUsageTrackerTable(Base):
         server_default=func.now()
     )
     
-    # NEW FIELDS FOR STEP 0
     state = Column(Enum(AIRequestState), default=AIRequestState.COMPLETED, nullable=False)
     current_request_id = Column(String, nullable=True) # Tracks the active flight ID

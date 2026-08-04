@@ -9,10 +9,13 @@ class USER_ERROR_CODES(enum.Enum):
     
     #auth:
     UNAUTHORIZED_ACCESS = "UNAUTHORIZED_ACCESS"
-    
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     
     #service:
     RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
+
+    #duplicate
+    INPUT_ALREADY_EXISTS = "INPUT_ALREADY_EXISTS"
 
 class SYSTEM_ERROR_CODES(enum.Enum):
     #Ai related:
@@ -31,3 +34,17 @@ class SYSTEM_ERROR_CODES(enum.Enum):
     
     #system:
     UNKNOWN_ERROR = "UNKNOWN_ERROR"
+    
+    
+    #redis:
+    
+    
+    
+    #redis-session-sets:
+    NO_AVALIBLE_SESSIONS = "NO_AVALIBLE_SESSIONS"
+    
+    
+    #celery workers:
+    WORKER_PROCESS_FAILED = "WORKER_PROCESSED_FAILED"
+    WORKER_PROCESS_RETRYING = "WORKER_PROCESSED_RETRYING"
+    WORKER_IN_PROCESS = "WORKER_IN_PROCESS"

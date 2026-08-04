@@ -11,8 +11,7 @@ dump.rdb
 read_me.txt
 structures.txt
 logs/app.log 
-ai_route.py
-
+nigx/ngix_notes.txt
 
 __pycache__/
 *.py[cod]

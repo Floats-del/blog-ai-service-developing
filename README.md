@@ -2,75 +2,157 @@
 
 # 🚀 AI-Powered Blog Backend
 
-### A production-oriented FastAPI backend showcasing modern backend engineering and AI integration.
+### A production-oriented FastAPI backend showcasing scalable backend engineering, AI integration, and distributed system concepts.
 
-[![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-316192?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge\&logo=python)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?style=for-the-badge\&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-316192?style=for-the-badge\&logo=postgresql)](https://www.postgresql.org/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red?style=for-the-badge)](https://www.sqlalchemy.org/)
+[![Redis](https://img.shields.io/badge/Redis-7.0-DC382D?style=for-the-badge\&logo=redis)](https://redis.io/)
+[![Celery](https://img.shields.io/badge/Celery-Background%20Workers-37814A?style=for-the-badge)](https://docs.celeryq.dev/)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 </div>
 
 ---
 
-## 📖 About
+# 📖 About
 
 This project is my primary backend engineering portfolio project.
 
-Instead of focusing on a basic CRUD application, this backend explores production-oriented architecture while integrating modern AI services.
+Instead of building a simple CRUD application, this backend focuses on production-oriented engineering practices while integrating AI-powered features.
 
-The goal is to build software the same way production backends are designedusing clean architecture, asynchronous programming, structured logging, centralized exception handling, reusable services, and scalable API design.
+The goal is to design a scalable backend similar to real-world systems using:
+
+* Clean architecture principles
+* Async programming
+* Service-layer separation
+* Distributed background processing
+* Structured logging
+* Centralized exception handling
+* Authentication and authorization systems
+* AI service orchestration
 
 ---
 
 # ✨ Features
 
-### 🤖 AI Services
+## 🤖 AI Platform
 
-- AI Content Rephrasing
-- AI Title Generation
-- AI Text Summarization
-- AI Sentiment Analysis
-- AI Intent Classification
+* AI Content Rephrasing
+* AI Title Generation
+* AI Text Summarization
+* AI Sentiment Analysis
+* AI Intent Classification
+* Structured LLM Outputs
+* AI Provider Error Handling
+* AI Request Tracking
 
-### 🔐 Authentication
+---
 
-- JWT Authentication
-- OAuth2 Bearer Tokens
-- Password Hashing
+## 🔐 Authentication & Security
 
-### ⚙ Backend Engineering
+* JWT Authentication
+* OAuth2 Bearer Authentication
+* Password Hashing
+* Redis-backed JWT Session Management
+* Session Revocation
+* Logout From All Devices
+* User Ban System
+* Protected Routes
 
-- Async FastAPI
-- PostgreSQL
-- SQLAlchemy Async ORM
-- Alembic Migrations
-- Pydantic Validation
-- Dependency Injection
-- Structured Logging
-- Centralized Exception Handling
-- Consistent API Response Wrapper
+---
+
+## ⚡ Backend Engineering
+
+* Async FastAPI
+* PostgreSQL Database
+* SQLAlchemy Async ORM
+* Alembic Migrations
+* Pydantic Validation
+* Dependency Injection
+* Service Layer Architecture
+* Centralized Exception Handling
+* Standardized API Response Wrapper
+* Structured Application Logging
+
+---
+
+## 🚦 Performance & Infrastructure
+
+* Redis Caching
+* Redis Session Storage
+* SlowAPI Rate Limiting
+* Nginx Reverse Proxy
+* Celery Background Workers
+* Async AI Task Processing
+* Task Status Tracking
 
 ---
 
 # 🏗 Architecture
 
 ```text
-                Client
-                   │
-                   ▼
-           FastAPI Routes
-                   │
-                   ▼
-          Business Services
-                   │
-        ┌──────────┴──────────┐
-        ▼                     ▼
-   Database Layer         AI Services
-        │                     │
-        ▼                     ▼
- PostgreSQL              Large Language Model
+                         Client
+                           │
+                           ▼
+                    Nginx Reverse Proxy
+                           │
+                           ▼
+                    FastAPI Application
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+
+ Authentication       AI Gateway          API Services
+        │                  │                  │
+        ▼                  ▼                  ▼
+
+ Redis Sessions     AI Services        Business Logic
+ Redis Cache             │                  │
+                         ▼                  ▼
+
+                  Celery Workers      PostgreSQL
+                         │
+                         ▼
+
+                    Redis Broker
+                    Redis Results
+```
+
+---
+
+# 🧠 AI Request Flow
+
+```text
+Client
+  |
+  v
+AI Endpoint
+  |
+  v
+AI Gateway
+  |
+  ├── Authentication Validation
+  |
+  ├── Quota Check
+  |
+  ├── Request Reservation
+  |
+  v
+Celery Task Queue
+  |
+  v
+AI Worker
+  |
+  v
+LLM Processing
+  |
+  v
+Redis Result Backend
+  |
+  v
+Client Polls Task Status
 ```
 
 ---
@@ -80,19 +162,36 @@ The goal is to build software the same way production backends are designedusing
 ```text
 .
 ├── Ai/
+│   ├── title generation
+│   ├── summarization
+│   ├── sentiment analysis
+│   └── intent classification
+│
+├── celery_worker/
+│   ├── celery_app.py
+│   └── tasks/
+│
 ├── core/
+│   ├── exceptions
+│   ├── security
+│   └── configuration
+│
 ├── db_tables/
+│
 ├── migrations/
+│
 ├── routers/
 │   ├── ai/
 │   ├── auth/
 │   ├── posts/
 │   └── users/
+│
 ├── utils/
 │   ├── logging/
 │   ├── schemas.py
 │   ├── hashing.py
-│   └── ...
+│   └── helpers
+│
 ├── main.py
 └── requirements.txt
 ```
@@ -101,23 +200,28 @@ The goal is to build software the same way production backends are designedusing
 
 # 🛠 Tech Stack
 
-| Category | Technologies |
-|----------|--------------|
-| Backend | FastAPI |
-| Language | Python |
-| Database | PostgreSQL |
-| ORM | SQLAlchemy (Async) |
-| Authentication | JWT, OAuth2 |
-| Validation | Pydantic |
-| AI | LangChain, Groq |
-| HTTP Client | HTTPX |
-| Database Migration | Alembic |
+| Category          | Technologies     |
+| ----------------- | ---------------- |
+| Backend Framework | FastAPI          |
+| Language          | Python 3.12      |
+| Database          | PostgreSQL       |
+| ORM               | SQLAlchemy Async |
+| Authentication    | JWT, OAuth2      |
+| Validation        | Pydantic         |
+| AI Framework      | LangChain        |
+| AI Provider       | Groq             |
+| AI Monitoring     | LangSmith        |
+| Cache             | Redis            |
+| Task Queue        | Celery           |
+| Rate Limiting     | SlowAPI          |
+| Reverse Proxy     | Nginx            |
+| Migration Tool    | Alembic          |
 
 ---
 
 # 🚀 Getting Started
 
-### Clone the repository
+## Clone repository
 
 ```bash
 git clone https://github.com/Floats-del/blog-ai-service-developing.git
@@ -125,7 +229,7 @@ git clone https://github.com/Floats-del/blog-ai-service-developing.git
 
 ---
 
-### Create a virtual environment
+## Create virtual environment
 
 ```bash
 python -m venv .venv
@@ -133,15 +237,15 @@ python -m venv .venv
 
 ---
 
-### Activate it
+## Activate environment
 
-Windows
+Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Linux
+Linux:
 
 ```bash
 source .venv/bin/activate
@@ -149,7 +253,7 @@ source .venv/bin/activate
 
 ---
 
-### Install dependencies
+## Install dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -157,9 +261,9 @@ pip install -r requirements.txt
 
 ---
 
-### Configure environment variables
+## Environment Variables
 
-Create a `.env` file.
+Create `.env`
 
 ```env
 DATABASE_URL=
@@ -177,7 +281,7 @@ LANGSMITH_API_KEY=
 
 ---
 
-### Apply database migrations
+## Database Migration
 
 ```bash
 alembic upgrade head
@@ -185,7 +289,7 @@ alembic upgrade head
 
 ---
 
-### Start the server
+## Start Application
 
 ```bash
 uvicorn main:app --reload
@@ -193,35 +297,55 @@ uvicorn main:app --reload
 
 ---
 
-# 📈 Current Engineering Focus
+## Start Redis
 
-This project is continuously evolving toward production-quality backend architecture.
+```bash
+redis-server
+```
 
-Current areas of focus include:
+---
 
-- Clean Architecture
-- AI Service Design
-- Better Logging
-- Performance Improvements
-- Authentication
-- Error Handling
+## Start Celery Worker
+
+```bash
+celery -A celery_worker.celery_app:celery_app worker --loglevel=info
+```
+
+---
+
+# 📈 Engineering Focus
+
+Current development focuses on building production-grade backend infrastructure:
+
+* Distributed task processing
+* AI workflow orchestration
+* Scalable authentication
+* Backend observability
+* Performance optimization
+* Security improvements
+* Cloud-ready architecture
 
 ---
 
 # 🗺 Roadmap
 
-- ✅ Async FastAPI
-- ✅ JWT Authentication
-- ✅ PostgreSQL Integration
-- ✅ AI Services
-- ✅ Structured Logging
-- ✅ Separation of Concerns
-- ⏳ Redis Caching
-- ⏳ JWT Session Revocation
-- ⏳ Docker
-- ⏳ Background Workers
-- ⏳ API Gateway / BFF
-- ⏳ CI/CD Pipeline
+* ✅ Async FastAPI
+* ✅ PostgreSQL Integration
+* ✅ SQLAlchemy Async ORM
+* ✅ JWT Authentication
+* ✅ Redis Integration
+* ✅ Redis Session Management
+* ✅ JWT Session Revocation
+* ✅ AI Services
+* ✅ AI Gateway
+* ✅ Quota Reservation System
+* ✅ Structured Logging
+* ✅ Rate Limiting
+* ✅ Celery Background Workers
+* ⏳ Docker Deployment
+* ⏳ CI/CD Pipeline
+* ⏳ Kubernetes Deployment
+* ⏳ WebSocket Real-Time Updates
 
 ---
 

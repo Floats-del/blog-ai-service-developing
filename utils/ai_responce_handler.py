@@ -24,7 +24,3 @@ def handle_service_response(
         error_code=result.error_code,
         message=result.error_message
     )
-"""
-Why not JSONResponse? like all other exceptions?
-well look exception_cls is of AppException type which calls global_exception_handler which is JSONResponse so ggz
-"""

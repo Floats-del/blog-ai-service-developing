@@ -9,12 +9,12 @@ from db_tables.tables import CommentTable, LikeTable, PostTable
 from utils.APIResponce_error_code_enum import SYSTEM_ERROR_CODES, USER_ERROR_CODES
 from utils.logging.helper_log import LogState, log_state
 from utils.logging.logEvents import PostingLogs
-from utils.schemas import APIResponse, CommentCreateSchema, PostCreateSchema
+from utils.schemas import APIResponse, CommentCreateSchema, PostCreateSchema, TokenDataSchema
 
 
 from sqlalchemy.orm import joinedload #eager loader 
 
-async def get_Nposts_service(user_payload, db: AsyncSession, limit: int = 10, offset: int = 0, search: Optional[str] = None, personal_only: bool = False) -> APIResponse:
+async def get_Nposts_service(user_payload, db: AsyncSession, limit: int = 10, offset: int = 0, search: Optional[str] = None, personal_only: bool = False) -> APIResponse: 
     log_state(PostingLogs.POSTING_SERVICE_STARTED, function="get_Nposts_service", user_id=user_payload.user_id, level=LogState.INFO)
 
     try:
@@ -35,15 +35,13 @@ async def get_Nposts_service(user_payload, db: AsyncSession, limit: int = 10, of
         post_alias = aliased(PostTable, name="post")
 
         log_state(PostingLogs.FETCHING_POSTS, function="get_Nposts_service", user_id=current_user["user_id"], level=LogState.INFO)
-        
-        #NEW:
         stmt = (
             select(
                 post_alias,
                 func.count(LikeTable.post_id).label("likes")
             )
             .options(
-                selectinload(post_alias.owner) #fetched this b4 joining 
+                selectinload(post_alias.owner)
             )
             .join(
                 LikeTable,
@@ -55,7 +53,6 @@ async def get_Nposts_service(user_payload, db: AsyncSession, limit: int = 10, of
         
         
 
-        #if he is on his own profile or main page (ill extract this data form js)
         if personal_only:
             stmt = stmt.where(
                 post_alias.user_id == current_user["user_id"]
@@ -90,8 +87,7 @@ async def get_Nposts_service(user_payload, db: AsyncSession, limit: int = 10, of
             error_message=None
         )
 
-    except SQLAlchemyError as e: #i couldve called custom exceptions dw, ill see if others require them ill change here
-
+    except SQLAlchemyError as e: 
         log_state(PostingLogs.OPERATION_FAILED, function="get_Nposts_service", user_id=user_payload.user_id, level=LogState.ERROR, exc=e)
         
         return APIResponse(
