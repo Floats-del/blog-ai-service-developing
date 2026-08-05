@@ -52,7 +52,8 @@ class TokenSchema(BaseModel):
     token_type: str
 
 class TokenDataSchema(BaseModel): 
-    user_id: Optional[int] = None
+    user_id: int = None
+    jid: str = None
 
 class PostLikesOutSchema(BaseModel):
     post: PostResponseSchema 
