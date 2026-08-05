@@ -7,6 +7,20 @@ celery_app = Celery(
 )
 
 celery_app.conf.imports = (
-    "celery_worker.tasks.demo_tasks",
     "celery_worker.tasks.Ai_worker"
 )
+
+
+
+celery_app.conf.task_default_queue = "default"
+celery_app.conf.task_routes = {
+    "ai.*": { 
+        "queue": "ai"
+    },
+    "email.*": {
+        "queue": "email"
+    },
+    "maintenance.*": {
+        "queue": "maintenance"
+    },
+}

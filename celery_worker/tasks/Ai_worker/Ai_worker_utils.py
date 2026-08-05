@@ -1,14 +1,14 @@
 from celery.result import AsyncResult
-from celery_worker import celery_app
+from celery_worker.celery_app import celery_app
 from utils.APIResponce_error_code_enum import SYSTEM_ERROR_CODES
 from utils.schemas import APIResponse
 
 
 
-def get_title_worker_result(task_id: str, app) -> APIResponse:
+def get_worker_result(task_id: str) -> APIResponse:
     result = AsyncResult(
     task_id,
-    app
+    app=celery_app
     )
     
     if result.state == "SUCCESS":

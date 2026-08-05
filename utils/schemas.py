@@ -190,6 +190,6 @@ class AIRequestState(str, enum.Enum):
 
 
 #After celery:
-class TaskResponse(BaseModel):
+class All_worker_starter_responce(BaseModel):
     task_id: str
     status: str = "queued"
