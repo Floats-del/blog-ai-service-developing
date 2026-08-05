@@ -212,23 +212,43 @@ Some design choices were made intentionally to mirror production systems.
 ```text
 .
 ├── Ai/
+│   ├── main.py
+│   ├── title_gen.py
+│   ├── sentiment_analysis.py
+│   └── ...
+│
 ├── celery_worker/
 │   ├── celery_app.py
 │   └── tasks/
+│       └── Ai_worker/
+│
 ├── core/
+│   ├── exceptions.py
+│   ├── security.py
+│   └── rate_limiters/
+│
 ├── db_tables/
-├── migrations/
+│
+├── alembic/
+│   └── versions/
+│
 ├── routers/
 │   ├── ai/
 │   ├── auth/
 │   ├── posts/
+│   ├── likes/
 │   └── users/
+│
 ├── utils/
 │   ├── logging/
 │   ├── schemas.py
 │   └── ...
+│
+├── logs/
+├── nginx/
 ├── main.py
-└── requirements.txt
+├── requirements.txt
+└── README.md
 ```
 
 ---
