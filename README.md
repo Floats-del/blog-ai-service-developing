@@ -3,6 +3,7 @@
 # 🚀 AI-Powered Blog Backend
 **A production-inspired FastAPI backend focused on scalable architecture, AI integration, distributed background processing, and modern backend engineering practices.**
 
+![Version](https://img.shields.io/badge/version-v1.0-blue?style=for-the-badge)
 [![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge\&logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?style=for-the-badge\&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-316192?style=for-the-badge\&logo=postgresql)](https://www.postgresql.org/)
@@ -53,13 +54,14 @@ graph TD
     FastAPI -->|Cache| RedisCache[(🔴 Redis Cache)]
     FastAPI -->|Async ORM| Postgres[(🐘 PostgreSQL)]
     
-    FastAPI -->|Enqueue Task| CeleryQueue[RabbitMQ / Redis Broker]
+    FastAPI -->|Enqueue Task| CeleryQueue[(🔴 Redis Broker)]
     
     subgraph Background Processing
         CeleryQueue --> AIWorker1[⚙️ AI Celery Worker - Queue A]
         CeleryQueue --> AIWorker2[⚙️ AI Celery Worker - Queue B]
     end
-    
+
+    AI Worker --> RedisResults[(Redis Result Backend)]
     AIWorker1 -->|LLM API Call| Groq[🧠 Groq / LangChain]
     AIWorker2 -->|LLM API Call| Groq
 ```
@@ -87,7 +89,7 @@ Release Reservation
       │
 Redis Result Backend
       │
-Poll Result Endpoint
+Worker Result Polling Endpoint
 ```
 
 ### 🔄 Sequence Diagram
@@ -267,7 +269,7 @@ Some design choices were made intentionally to mirror production systems.
    ```
 
 3. **Activate it**
-   - Windows: `.venv\Scriptsctivate`
+   - Windows: `.venv\Scripts\activate`
    - Linux: `source .venv/bin/activate`
 
 4. **Install dependencies**
