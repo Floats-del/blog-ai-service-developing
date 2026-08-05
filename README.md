@@ -45,25 +45,23 @@ The backend combines asynchronous APIs, distributed task processing, Redis-backe
 graph TD
     Client([📱 Client]) -->|HTTPS| Nginx[🌐 Nginx Reverse Proxy]
     Nginx -->|Proxy Pass| FastAPI[⚡ FastAPI Application]
-    
-    subgraph Service Layer / Routers
+
+    subgraph Service Layer
         FastAPI
     end
-    
-    FastAPI -->|Auth & Session| RedisSessions[(🔴 Redis Sessions)]
-    FastAPI -->|Cache| RedisCache[(🔴 Redis Cache)]
-    FastAPI -->|Async ORM| Postgres[(🐘 PostgreSQL)]
-    
-    FastAPI -->|Enqueue Task| CeleryQueue[(🔴 Redis Broker)]
-    
+
+    FastAPI -->|Authentication| RedisSessions[(🔴 Redis Sessions)]
+    FastAPI -->|Caching| RedisCache[(🔴 Redis Cache)]
+    FastAPI -->|Async ORM| PostgreSQL[(🐘 PostgreSQL)]
+
+    FastAPI -->|Enqueue AI Task| RedisBroker[(🔴 Redis Broker)]
+
     subgraph Background Processing
-        CeleryQueue --> AIWorker1[⚙️ AI Celery Worker - Queue A]
-        CeleryQueue --> AIWorker2[⚙️ AI Celery Worker - Queue B]
+        RedisBroker --> AIWorkers[⚙️ Celery Workers]
     end
 
-    AI Worker --> RedisResults[(Redis Result Backend)]
-    AIWorker1 -->|LLM API Call| Groq[🧠 Groq / LangChain]
-    AIWorker2 -->|LLM API Call| Groq
+    AIWorkers -->|LLM Requests| Groq[🧠 Groq / LangChain]
+    AIWorkers -->|Store Results| RedisResults[(🔴 Redis Result Backend)]
 ```
 
 ---
