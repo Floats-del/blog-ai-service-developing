@@ -1,6 +1,3 @@
-#NOOOOOO MOREEEEE ALTERATION NEEEEDEDDD! (im fully fixed now!)
-
-
 from Ai.intent_classifier import get_user_intent
 from langsmith import traceable
 from pydantic import BaseModel, Field, StringConstraints
@@ -13,7 +10,7 @@ from Ai.raw_and_parsed_clean import extract_parsed_data, extract_raw_data
 from core.exceptions import AIServiceException
 from utils.schemas import APIResponse
 
-# Standardized Telemetry & Error Enums Injection
+
 from utils.logging.logEvents import ProviderLog, RepairLog, SecurityLog, ServiceLog
 from utils.logging.helper_log import log_state, LogState
 from utils.APIResponce_error_code_enum import USER_ERROR_CODES, SYSTEM_ERROR_CODES
@@ -21,7 +18,7 @@ from utils.APIResponce_error_code_enum import USER_ERROR_CODES, SYSTEM_ERROR_COD
 
 class TitlePackage(BaseModel):
     main_title: Union[str, None] = Field(
-        None,  # Giving it a default of None allows easier instantiation if False
+        None, 
         description="The absolute best, catchiest primary title. Set to null if is_appropriate is False."
     )
     variations: List[str] = Field(
@@ -51,22 +48,14 @@ async def generate_titles(model, text: str) -> APIResponse:
             error_message="Input text is empty"
         )
     
-    #go read Rephase form extaly here to know why code looks small here lol
+
     intent_package: APIResponse = await get_user_intent(model, text)
     if not intent_package.success:
         log_state(ServiceLog.AI_SERVICE_FAILED, function="generate_titles")
         log_state(ServiceLog.EXITING_AI_SERVICE, function="generate_titles")
-        return intent_package #why not return ApiResponce? well get_user_intent gives us api responce so intent_package is the apiresponce!
-   
-    
-    #testing something:
-    # json_model = model.bind(response_format={"type": "json_object"}) one of the methods!
+        return intent_package 
+
     structured_model = model.with_structured_output(TitlePackage, include_raw=True)
-    #i stoped using with_structured_output, coz hugging face didnt support, but groq might kme test
-        #also since the iclude_raw is true i can get 100% gurante normal ouput if the JSONification fails
-            #with_structured_output works: when u get model responce hard json extract!
-            #if no success i get raw
-                #now if with_structured_output fails ive my og way to fix it ;( --eq(1) 
     
     
     parser = PydanticOutputParser(pydantic_object=TitlePackage)
@@ -269,17 +258,16 @@ async def generate_titles(model, text: str) -> APIResponse:
     """ 
     
     
-    #parsed:
-    parsed = getattr(result, "parsed", None) #the with_structured_output's output 
+
+    parsed = getattr(result, "parsed", None) 
     if parsed is None and isinstance(result, dict):
         parsed = result.get("parsed")
     
     if isinstance(parsed, dict):
-        required_keys = {"main_title", "variations", "minor_summary"} #always check for all keys in service schame above class!
+        required_keys = {"main_title", "variations", "minor_summary"} 
 
         if not required_keys.issubset(parsed.keys()):
             parsed = None       
-    #we dont exception here! we allow it to fail so things can go into raw's hand!
     
     if parsed is not None and not isinstance(parsed, (dict, TitlePackage)):
         parsed = None        
