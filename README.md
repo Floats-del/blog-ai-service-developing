@@ -34,18 +34,7 @@ The backend combines asynchronous APIs, distributed task processing, Redis-backe
 - **Multiple Celery Queues**
 - **Production-Inspired Error Handling**
 
----
 
-## 📸 Sneak Peek
-<div align="center">
-  <img src="https://via.placeholder.com/800x450/1e1e1e/00d2ff?text=Swagger+UI+Screenshot+-+Replace+With+Actual+Image" alt="Swagger UI">
-  <p><i>API Documentation via Swagger UI</i></p>
-
-  <br>
-
-  <img src="https://via.placeholder.com/800x450/1e1e1e/37814A?text=Celery+Worker+Logs+GIF+-+Replace+With+Actual+GIF" alt="Celery Worker Logs">
-  <p><i>Async AI task processing via Celery Workers</i></p>
-</div>
 
 ---
 
