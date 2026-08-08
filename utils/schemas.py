@@ -61,6 +61,9 @@ class PostLikesOutSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChangePasswordInputSchema(BaseModel):
+    old_pass: str
+    new_pass: str
 
 
 #used in ai_route
