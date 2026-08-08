@@ -10,7 +10,7 @@ from routers.auth import auth_route
 from routers.likes import likes_route
 from routers.posts import posts_route
 from routers.users import users_routes
-
+from routers.ai.clean.ai_worker_pool import router as ai_worker_pool_router
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -122,6 +122,7 @@ app.include_router(router=users_routes.router)
 app.include_router(router=auth_route.router)
 app.include_router(router=likes_route.router)
 app.include_router(router=ai_route_copy.router)
+app.include_router(router=ai_worker_pool_router)
 
 
 

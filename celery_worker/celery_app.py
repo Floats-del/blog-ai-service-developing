@@ -6,13 +6,14 @@ celery_app = Celery(
     backend="redis://localhost:6379/1",
 )
 
+
+
 celery_app.conf.imports = (
-    "celery_worker.tasks.Ai_worker"
+    "celery_worker.tasks.Ai_worker.Ai_worker",
 )
 
 
-
-celery_app.conf.task_default_queue = "default"
+celery_app.conf.task_default_queue = "default" 
 celery_app.conf.task_routes = {
     "ai.*": { 
         "queue": "ai"
