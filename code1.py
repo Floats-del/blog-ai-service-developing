@@ -71,6 +71,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 app.add_exception_handler(
+    AppException,
     global_exception_handler  
 )
 
