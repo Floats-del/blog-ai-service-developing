@@ -1,5 +1,5 @@
 from fastapi import Request
 
 
-async def get_redis(request: Request): #works in routes coz: FastAPI automatically injects the current request object when it sees
+async def get_redis(request: Request): 
     return request.app.state.redis

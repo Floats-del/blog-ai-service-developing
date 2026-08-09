@@ -57,7 +57,7 @@ class CommentTable(Base):
 
     post = relationship("PostTable", back_populates="comments")
     commenter = relationship("UserTable", back_populates="comments")
- 
+
 
 
 
