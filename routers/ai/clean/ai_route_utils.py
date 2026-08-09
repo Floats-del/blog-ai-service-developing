@@ -1,7 +1,7 @@
 from uuid import uuid4
 from celery_worker.tasks.Ai_worker.Ai_worker import title_gen_task, sentiment_analysis_task, summary_ai_task, rephraser_ai_task
 from routers.ai.clean.ai_helpers import Quota_check
-from routers.ai.clean.ai_route import consume_ai_quota
+from routers.ai.clean.ai_reservation_and_consume import consume_ai_quota
 from utils.schemas import RephraseRequest_route, SentimentAnalysisRequest_route, SummaryRequest_route, Title_genRequest_Route, TokenDataSchema
 from sqlalchemy.ext.asyncio import AsyncSession 
 

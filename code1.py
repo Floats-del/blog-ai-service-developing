@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 import db_tables.tables as tables
 from db import engine
 
-from routers.ai.clean import ai_route_copy    
+from routers.ai.clean import ai_route    
 from routers.auth import auth_route
 from routers.likes import likes_route
 from routers.posts import posts_route
@@ -27,7 +27,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from core.rate_limiters.limiter_file import limiter
 
-
+from dotenv import load_dotenv
+load_dotenv()  
 
 from utils.logging.config import setup_logging
 setup_logging() 
@@ -122,7 +123,7 @@ app.include_router(router=posts_route.router)
 app.include_router(router=users_routes.router)
 app.include_router(router=auth_route.router)
 app.include_router(router=likes_route.router)
-app.include_router(router=ai_route_copy.router)
+app.include_router(router=ai_route.router)
 app.include_router(router=ai_worker_pool_router)
 
 
@@ -133,5 +134,3 @@ def root():
     return {"message": "Hello World"}
 
 
-from dotenv import load_dotenv
-load_dotenv()  
